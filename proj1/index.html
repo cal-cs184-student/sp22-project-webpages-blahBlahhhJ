@@ -1,7 +1,219 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Rasterizer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2018</h1>
+<h1 align="middle">Project 1: Rasterizer</h1>
+<h2 align="middle">Jason Wang, CS184-??</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+
+<h2 align="middle">Section I: Rasterization</h2>
+
+<h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+<hr>
+  <p>Here's how I rasterize triangles:</p>
+  <p>-  Given 3 points, I first computed three normal vectors using "right-hand-rule" <code>n0=(y0 - y1, x1 - x0)</code>, same for the other two.</p>
+  <p>-  Then, I make sure the normal vectors point inside the triangle by flipping the directions of all normal vectors if <code>(x2 - x0) * n0 < 0</code> (same for the other two) because if the inner product of normal vector and the third point is negative, that means the normal vector is pointing outside the triangle.</p>
+  <p>-  I also find the bounding box of the triangle by computing the min and max of x and y coordinates.</p>
+  <p>-  Finally, I loop over all the pixels inside the bounding box, checking if the pixel sample is inside the triangle (<code>(x-x0+0.5, y-y0+0.5) * n0 >= 0</code> same for the other two). If yes, fill the pixel with color.</p>
+<hr>
+  <p>My implementation is no worse than the performance of sampling within the bounding box because I only sample within the bounding box as well. The bounding box is defined as within the rectangle spanned by <code>(min_x, min_y)</code> and <code>(max_x, max_y)</code>.</p>
+<hr>
+  <p>The interesting part of the scene is at the very left of the middle red triangle. Since there's no antialiasing, the triangle "breaks" at the pointy edge.</p>
+  <div align="middle">
+    <img src="images/task_1_fig_1.png" align="middle" width="800px"/>
+  </div>
+<hr>
+
+<h3 align="middle">Part 2: Antialiasing triangles</h3>
+<hr>
+  <p>Here's how I implement supersampling:</p>
+  <p>-  All information gets written to <code>sample_buffer</code> first and then to <code>rgb_framebuffer_target</code> in the end for rendering.</p>
+  <p>-  I modify the signature for <code>fillPixel()</code> to include a new parameter <code>s</code> that determines which super sample it should fill.</p>
+  <p>-  The <code>sample_buffer</code> of size <code>width * height * sample_rate</code> and is designed so that super samples for a particular pixel are neighboring elements to preserve spatial locality for good performance. (For pixel <code>(x, y)</code>, its corresponding super samples are <code>sample_buffer[sample_rate * (y * width + x) + s] for s in range(sample_rate)</code>.)</p>
+  <p>-  For <code>rasterize_point()</code>, to get consistent results, I fill all the super samples corresponding to the underlying pixel to fill.</p>
+  <p>-  For <code>rasterize_triangle()</code>, I check for all super samples <code>(x + 0.5 / sqrt(sample_rate) * (1+2*xx), y + 0.5 / sqrt(sample_rate) * (1+2*y))</code> where <code>xx, yy in range(sqrt(sample_rate))</code> (These are the coordinates for the super samples in the SVG space).</p>
+  <p>-  When writing to <code>rgb_framebuffer_target</code>, I average all super samples' colors for a particular pixel to determine the actual color for that pixel.</p>
+  <p>-  Supersampling is useful because it antialiases the triangles by making the edges smoother. By averaging the super samples, we get a better sense of "the proportion of region that the triangle covers for that particular pixel". Rather than a "0-or-1" hard threshold for pixels, we now allow a pixel to be "partially turned on" so that pixels in the edge have a smoother transition to the background (resulting in lower frequency).</p>
+<hr>
+  <div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/task_2_fig_1.png" align="middle" width="400px"/>
+          <figcaption align="middle">sample rate = 1</figcaption>
+        </td>
+        <td>
+          <img src="images/task_2_fig_2.png" align="middle" width="400px"/>
+          <figcaption align="middle">sample rate = 4</figcaption>
+        </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/task_2_fig_3.png" align="middle" width="400px"/>
+          <figcaption align="middle">sample rate = 9</figcaption>
+        </td>
+        <td>
+          <img src="images/task_2_fig_4.png" align="middle" width="400px"/>
+          <figcaption align="middle">sample rate = 16</figcaption>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <p>We can observe that the higher the sample rate is, the smoother edges we get. As explained above, this is because when we have more super samples to average out, we get a better sense of the proportion covered by the triangle in that pixel, resulting in smoother edges and lower frequencies.</p>
+  <hr>
+
+  </div>
+
+
+<h3 align="middle">Part 3: Transforms</h3>
+<hr>
+  <div align="middle">
+    <img src="images/task_3_fig_1.png" align="middle" width="800px"/>
+  </div>
+  <p>I drew a robot doing Kung Fu. I changed the colors of the hands and feet to be blue, and rotate the limbs following the transform hierarchy.</p>
+<hr>
+
+
+<h2 align="middle">Section II: Sampling</h2>
+
+<h3 align="middle">Part 4: Barycentric coordinates</h3>
+<hr>
+<p>Barycentric coordinates describes a point's "relative" location within a triangle. The coordinate is as <code>(alpha, beta, gamma)</code> which forms a linear interpolation of the 3 vertices of the triangle (<code>X = alpha * A + beta * B + gamma * C</code>). Trivially, if X is at point A, then the coordinates will be (1, 0, 0). This image shows the barycentric coordinates for all points within the triangle using RGB values. Notice how the color is pure around the vertices and blends together at the center.</p>
+<div align="middle">
+  <img src="images/task_4_fig_1.png" align="middle" width="400px"/>
+</div>
+<hr>
+<div align="middle">
+  <img src="images/task_4_fig_2.png" align="middle" width="400px"/>
+</div>
+<p>No modifications are made.</p>
+<hr>
+<h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+<hr>
+  <p>Pixel sampling for texture mapping transform screen location to texture location using barycentric coordinates, and directly sample texture color at full texture resolution for all screen pixels.</p>
+  <p>Similar to the previous part, I first compute the barycentric coordinates for the screen sample, and then compute the coordinate for the corresponding texture coordinate using the same barycentric coordinates to interpolate the texture triangle. Finally, I apply specific pixel sampling methods to extract the color for the texture and extract the color of that texel.</p>
+  <p>Nearest: This sampling method simply extracts the color of the closest texel for the texture coordinate. I implement this by simply rounding the coordinates to the nearest integer.</p>
+  <p>Bilinear: This sampling method computes a linear interpolation of the 4 surrounding texels' colors. I implement this by first writing a helper function <code>lerp()</code> to help with doing linear interpolation, and then do 3 rounds of interpolation for the 4 surrounding texels (computed by <code>floor(), ceil()</code>) to extract the color for the texture coordinate.</p>
+<hr>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_5_fig_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">nearest, sample rate = 1</figcaption>
+      </td>
+      <td>
+        <img src="images/task_5_fig_2.png" align="middle" width="400px"/>
+        <figcaption align="middle">bilinear, sample rate = 1</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/task_5_fig_3.png" align="middle" width="400px"/>
+        <figcaption align="middle">nearest, sample rate = 16</figcaption>
+      </td>
+      <td>
+        <img src="images/task_5_fig_4.png" align="middle" width="400px"/>
+        <figcaption align="middle">bilinear, sample rate = 16</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<hr>
+  <p>This is a zoomed in version of <code>texmap/test1.svg</code>.</p>
+  <p>As shown in the pictures, when sample rate is 1, there's a clear difference between nearest sampling and bilinear sampling, where nearest sampling has a lot of jaggies, and bilinear sampling creates a much smoother grid. The difference is not that clear when we get to a higher sample rate of 16.</p>
+  <p>This is mainly because when doing texture sampling on full resolution texture, one pixel area could cover a lot of texels which results in a low texture sampling rate. If the sampling rate is too low, there will be aliasing. This is especially true for nearest sampling because we're only sampling 1 texel within all the texels covered by the pixel while bilinear sampling sort of uses 4 texels which implies a higher sampling rate.</p>
+  <p>The reason why there's not much differences for higher sample rate is because supersampling already takes care of some aliasing.</p>
+<hr>
+
+<h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+<hr>
+<p>Although bilinear sampling solves some of the problem above, it "blurs" the entire scene the same way, while what we actually want is that the foreground is clean and the background is blurred because the texture sampling rate at foreground is high and the texture sampling rate at background is low.</p>
+<p>Level sampling helps solve this problem by maintaining different resolution versions of the same texture image (called levels), and we sample from the higher resolution texture when texture sampling rate is high (like in foreground, when one pixel covers few texels), and we sample from lower resolution texture when texture sampling rate is low (like in background, when one pixel covers many texels.)</p>
+<p>Doing this keeps the foreground clean while preventing aliasing from happening in the background where texture sampling rate is low.</p>
+<p>As shown in the "debugging" images below, level sampling uses different levels indicated by different colors.</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_6_fig_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">point sampling</figcaption>
+      </td>
+      <td>
+        <img src="images/task_6_fig_2.png" align="middle" width="400px"/>
+        <figcaption align="middle">level sampling</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<hr>
+<p>I implement level sampling by following the equations from lectures. First, I compute the corresponding texture coordinates for neighboring pixels, and use the maximum distance between them to compute the logarithm for selecting the level to sample. Then, follow the methods for point sampling where the only difference is I sample color from the specified mipmap level instead of on the full resolution texture.</p>
+<hr>
+  <p>Speed: Supersampling should have a much worse runtime comparing to point sampling and level sampling because it samples multiple samples at one pixel where the latter two methods only sample one.</p>
+  <p>Memory: Supersampling should take more space comparing to point sampling and level sampling because it needs to store a buffer of all the super samples which requires 4x or 9x or 16x more space. Level sampling stores a couple more mipmaps of textures but one could easily prove that the additional space is never greater than 2x the original space required. Pixel sampling requires the least amount of space because it's only using the full resolution texture.</p>
+  <p>Antialiasing: Supersampling has the best antialiasing power, level sampling has pretty good antialiasing power, but as seen in lectures, it sometimes overblurs the background. Pixel sampling has the worst antialiasing power.</p>
+  <p>Supersampling has good antialiasing power but is very costly to compute in both time and space complexity. Level sampling seems like a balanced option. Pixel sampling has bad antialiasing power but is cheap to compute.</p>
+<hr>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task_6_fig_3.png" align="middle" width="400px"/>
+        <figcaption align="middle">L_ZERO, P_NEAREST</figcaption>
+      </td>
+      <td>
+        <img src="images/task_6_fig_4.png" align="middle" width="400px"/>
+        <figcaption align="middle">L_ZERO, P_LINEAR</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="images/task_6_fig_5.png" align="middle" width="400px"/>
+        <figcaption align="middle">L_NEAREST, P_NEAREST</figcaption>
+      </td>
+      <td>
+        <img src="images/task_6_fig_6.png" align="middle" width="400px"/>
+        <figcaption align="middle">L_NEAREST, P_LINEAR</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>As seen in the screenshots, in <code>L_ZERO</code>, some of the vertical grids are missing. Switching to <code>L_NEAREST</code> helps bring back a little bit of the missing grids. Finally, using <code>P_LINEAR</code> helps recover even more missing grids.</p>
+
+<h2 align="middle">Section III: Art Competition</h2>
+<p>I'm lazy!!!</p>
+<h3 align="middle">Part 7: Draw something interesting!</h3>
+
+</body>
 </html>
