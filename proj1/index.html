@@ -23,7 +23,7 @@
 
 <body>
 
-<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2018</h1>
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
 <h1 align="middle">Project 1: Rasterizer</h1>
 <h2 align="middle">Jason Wang, CS184-??</h2>
 
@@ -32,8 +32,12 @@
 <div>
 
 <h2 align="middle">Overview</h2>
-<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
-
+<hr>
+  <p>This project is about rasterization, which is the most basic part to render images for SVG file. Following the rasterization pipeline, the SVG file gets processed (transformed) and each component in the file is triangulated and rendered.</p>
+  <p>After triangulation, I implemented the rasterization feature to draw pixels for the triangle. To reduce aliasing, I also implemented supersampling by "rendering" shapes on a larger screen and then downsample it to the actual frame buffer.</p>
+  <p>The rasterizer could also apply textures onto shapes using several texture sampling methods such as nearest and bilinear pixel sampling as well as nearest and linear mipmap level sampling.</p>
+  <p>The project is indeed very interesting. It's very nice to see how images actually gets rendering and compare different rendering configurations. I didn't know different configurations could affect the actual rendering of the same image that much. The idea of hierarchical transformation for the robot is also quite interesting to see, as it makes the process of drawing figures so much easier than I thought. Finally, this project also helped me be more familiar in reading and writing c++ code.</p>
+<hr>
 <h2 align="middle">Section I: Rasterization</h2>
 
 <h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
