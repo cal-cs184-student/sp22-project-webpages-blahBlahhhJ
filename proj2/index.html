@@ -1,7 +1,291 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <style>
+    body {
+      padding: 100px;
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Open Sans', sans-serif;
+      color: #121212;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+  </style>
+  <title>CS 184 Mesh Editor</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+  <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+  <h1 align="middle">Project 2: Mesh Editor</h1>
+  <h2 align="middle">Jason Wang, CS184-??</h2>
+
+  <br><br>
+
+  <div>
+
+    <h2 align="middle">Overview</h2>
+    <p>The MeshEdit project is a project about building meshes for 2D/3D objects. We start by implementing Bezier curve, and move to triangle meshes. For the bezier curve part, I implemented constructing Bezier curve as well as Bezier surface. For the triangle mesh part, I implement basic operations for the halfedge data structure. This include edge flipping and edge splitting. Finally, I used these two operations to upsample meshes. I think the halfedge data structure has a brilliant design which saves space and enable the program to build meshes easily. Also, I find the upsampling part quite interesting. Although I have no idea how those magic numbers (3/8 and 1/8) come from, but they work pretty well upsampling the meshes and smoothens the edges and vertices.</p>
+
+    <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+    <h3 align="middle">Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+    <hr>
+    <p>de Casteljau's algorithm is an algorithm for finding points for Bezier curves. Starting with a list of <code>n</code> control points, it recursively <code>lerp</code> between two neighboring points using <code>t</code> to produce the next-level control points. When the number of points decreases to 1, the resulting point will be the point on the bezier curve, parametrized by <code>t</code></code>.</p>
+    <p>Following the idea of this algorithm, I implemented a helper function <code>lerp(p0, p1, t)</code>. In <code>evaluateStep()</code>, I simply scan through the control points and <code>lerp</code> between the neighboring points and push the result to a new list.</p>
+    <hr>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/1_1.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Level 1</figcaption>
+          </td>
+          <td>
+            <img src="images/1_2.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Level 2</figcaption>
+          </td>
+        </tr>
+        <br>
+        <tr>
+          <td>
+            <img src="images/1_3.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Level 3</figcaption>
+          </td>
+          <td>
+            <img src="images/1_4.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Level 4</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <img src="images/1_5.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Level 5, completed curve</figcaption>
+          </td>
+          <td>
+            <img src="images/1_6.jpg" align="middle" width="400px" />
+            <figcaption align="middle">A slightly different curve with different t</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <hr>
+
+    <h3 align="middle">Part 2: Bezier surfaces with separable 1D de Casteljau subdivision</h3>
+    <hr>
+    <p>Here we have two parameters <code>u, v</code>. Extending to Bezier surfaces, the algorithm first evaluate Bezier curves for each row of control points parametrized by <code>u</code>, and then evaluate Bezier curves for columns parametrized by <code>v</code> using the control points evaluated by Bezier curve rows.</p>
+    <p>Following the idea of this extension, for parameter <code>u, v</code>, I first evaluate the points for the row control points parametrized by <code>u</code>, and then use these points to evaluate the final result parametrized by <code>v</code>. The evaluate methods is the same as the de Casteljau's algorithm from part 1.</p>
+    <hr>
+    <div align="middle">
+        <img src="images/2_1.jpg" align="middle" width="400px" />
+    </div>
+    <hr>
+    <h2 align="middle">Section II: Sampling</h2>
+
+    <h3 align="middle">Part 3: Average normals for half-edge meshes</h3>
+    <hr>
+    <p>I implemented this part by using the main idea from <code>printNeighborPositions(...)</code> to get the neighboring vertex <code>v = h_twin.vertex()</code>, and get the other vertex for the triangle by <code>w = h->next()->twin()->vertex()</code>.</p>
+    <p>With three vertex of the triangle available (<code>this, v, w</code>), I calculate one edge vector to be <code>ab = this - v</code>, the other as <code>ac = w - v</code>.</p>
+    <p>The normal vector is the normalized cross product of the two edges, and the area is the norm of the cross product of the two edges.</p>
+    <p>Finally, I divide the sum of normal vectors of all neighboring triangles by the sum of areas of them.</p>
+    <hr>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/3_1.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Without vertex normals</figcaption>
+          </td>
+          <td>
+            <img src="images/3_2.jpg" align="middle" width="400px" />
+            <figcaption align="middle">With vertex normals</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+    <h3 align="middle">Part 4: Half-edge flip</h3>
+    <hr>
+    <p>To implement edge flip, I first draw a trivial example on my ipad, and realize that we don't need to modify halfedges other than the ones that belongs to the two triangles.</p>
+    <p>I start by creating variables for the 2 faces, the 4 vertices, the 4 surrounding halfedges, and the 2 halfedges that is going to be flipped.</p>
+    <p>Without loss of generality, I assumed one of the halfedges (<code>e0->halfedge()</code>) that we want to flip is left, and the other one is right.</p>
+    <p>For pointers to and from faces, I let the left face to become the top face. This requires setting the 2 faces' halfedges, and setting 2 halfedges' faces.</p>
+    <p>When flipping the edges, I set the 2 flipped edges' vertices, and set 2 vertices' halfedges.</p>
+    <p>Finally, I modified the 6 halfedges' (4 surrounding halfedges and 2 flipped halfedges) "next" pointers to trace the new triangles.</p>
+    <hr>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/4_1.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Before flip</figcaption>
+          </td>
+          <td>
+            <img src="images/4_2.jpg" align="middle" width="400px" />
+            <figcaption align="middle">After flip</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+    <p>For debugging, I discovered 2 bugs I wrote. The first one is that for the new triangle, I only modified two halfedges' next pointers so that when I flip an edge, the entire face will disappear. I found this bug by manually going through what I drew on the ipad. The second bug is I forgot to modify some halfedges' face pointers so that after a couple of flips, some face will disappear. I found this bug by checking each halfedges' face pointer value in the information overlay and found that one halfedge has a completely different face address  than the other two.</p>
+    <hr>
+    <h3 align="middle">Part 5: Half-edge split</h3>
+    <hr>
+    <p>To implement edge split, I also draw a trivial example on my ipad, and listed everything I need to save as variable. This includes 4 faces (2 old 2 new), 3 center edges (3 new), 4 surrounding halfedges (4 old), 8 center halfedges (2 old 6 new), 5 vertices (4 old 1 new).</p>
+    <p>I then start filling the pointers of the new elements and modifying the old pointers one by one. For example, for halfedges, I start by setting all twin pointers, then next pointers, then vertex pointers, and edge as well as face pointers.</p>
+    <p>The final thing is to set the new center vertex's position to be the average of the top and bottom vertices.</p>
+    <hr>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/5_1.jpg" align="middle" width="300px" />
+            <figcaption align="middle">Before split</figcaption>
+          </td>
+          <td>
+            <img src="images/5_2.jpg" align="middle" width="300px" />
+            <figcaption align="middle">After split</figcaption>
+          </td>
+          <td>
+            <img src="images/5_3.jpg" align="middle" width="300px" />
+            <figcaption align="middle">After splits & flips</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+    <p>The debugging was quite easy after debugging the previous part. I messed up some variable names which makes the halfedge-to-vector mapping weird. After some debugging using clion, I tracked the failing vertices and fix them.</p>
+    <hr>
+    <h4>Extra credit</h4>
+    <p>I take care of boundary edge splitting by first checking if the edge is in boundary. If it is, that means we don't need to create the triangles in the boundary side.</p>
+    <p>Note that in this case, we cannot assume without loss of generality that <code>e0->halfedge()</code> is the left halfedge because the boundary could be in both side. Therefore, I manually set the left halfedge to be the halfedge that is not in the boundary and the right halfedge to be the halfedge that is in the boundary.</p>
+    <p>The difference between boundary edge split and normal edge split is that I don't need to care about many things on the boundary side. So I just deleted some lines of code from the normal edge split case to implement boundary edge split.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="./images/5_4.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Before boundary split</figcaption>
+          </td>
+          <td>
+            <img src="./images/5_5.jpg" align="middle" width="400px" />
+            <figcaption align="middle">After boundary split</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+
+    <h3 align="middle">Part 6: Loop subdivision for mesh upsampling</h3>
+    <hr>
+    <p>To implement loop subdivision, I follow the comments in the code.</p>
+    <p>First, I iterate through all vertices, computing the new positions, and setting them to be not new.</p>
+    <p>Then, I iterate through all edges, computing the new positions, and setting them to be not new as well.</p>
+    <p>Then, I iterate through all edges (that are old) to split them. To prevent getting into infinite loop, I <code>break</code> as soon as I see a new edge.</p>
+    <p>Then, I iterate through all edges (that are new), flipping them if it connects an old vertex with a new vertex. I distinguish the edge that needs to be flipped with the edge that is splitted by setting the former's halfedge to point to the split vertex and setting the latter's halfedge to point to the old vertex. This way, I simply need to check <code>edge->halfedge()->vertex()->isNew</code> to see if I need to flip it. If true, then don't flip. Otherwise, flip.</p>
+    <p>No debugging needed. I'm feeling lucky :)</p>
+    <hr>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6_1.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_2.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_3.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_4.jpg" align="middle" width="250px" />
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <p>The more I upsample the meshes, the denser the meshes become, and the less sharper the corners and edges become. As shown in the screenshots, after 4 upsample commands, the object almost turns into a sphere.</p>
+    <p>To reduce this effect, I repeated split the edges (3 turns) around vertices (I did it for 2 of it, but one could definitely do for all vertices for this object), and observe that upsampling the mesh didn't smooth out these two vertices to create a sphere, and I instead create a lemon with two pointy ends.</p>
+    <div align="middle">
+      <img src="images/6_5.jpg" align="middle" width="400px" />
+    </div>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6_6.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_7.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_8.jpg" align="middle" width="250px" />
+          </td>
+          <td>
+            <img src="images/6_9.jpg" align="middle" width="250px" />
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+    <p>After some upsampling, the cube mesh becomes asymmetric. There's pointy places everywhere on the mesh.</p>
+    <div align="middle">
+      <img src="images/6_10.jpg" align="middle" width="400px" />
+    </div>
+    <p>The reason is that the triangle meshes for the cube is uneven at first. As shown in the screenshots below, for the vertex on the left screenshot, its new position will depend on these 4 circled vertices (and itself). Clearly, there will be some bias for the resulting new position because of the vertex pointed by the diagonal edge (because we're summing the vectors for these 4 vertices when calculating the new position). For the vertex on the right screenshot, there's a more even layout for the neighboring vertices. Therefore, this results in the asymmetric mesh observed above (because the vertices are not updated in the same way).</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6_11.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Case 1</figcaption>
+          </td>
+          <td>
+            <img src="images/6_12.jpg" align="middle" width="400px" />
+            <figcaption align="middle">Case 2</figcaption>
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <p>If I split all diagonal edges, as shown in the left screenshot below, the upsampled mesh will be more symmetric (as shown in the right screenshot below) because now, every vertices depend on these 6 vertices around it, which means their new positions will be calculated in the same way.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/6_13.jpg" align="middle" width="400px" />
+          </td>
+          <td>
+            <img src="images/6_14.jpg" align="middle" width="400px" />
+          </td>
+        </tr>
+        <br>
+      </table>
+    </div>
+    <hr>
+    <h2 align="middle">Section III: Optional Extra Credit</h2>
+    <p>If you are not participating in the optional mesh competition, don't worry about this section!</p>
+
+    <h3 align="middle">Part 7: Design your own mesh!</h3>
+    <p>I'm lazy :)</p>
+</body>
+
 </html>
