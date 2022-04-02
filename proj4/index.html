@@ -1,7 +1,339 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 4 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Mesh Editor</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+<h1 align="middle">Project 4: Cloth Simulator</h1>
+<h2 align="middle">Jason Wang, CS184-??</h2>
+
+<br><br>
+
+<p>
+
+<h2 align="middle">Overview</h2>
+<p>In this project, I built cloth simulation using mass & spring model. For part 1, I represent the cloth using point masses and springs that connects the point masses. In part 2, I implemented physical simulation for the cloth for forces like gravity using Verlet integration. In part 3, I handled collisions for plane and sphere so that the cloth can fall on different objects. In part 4, I handled self-collision so that the cloth will not travel through itself. Finally in part 5, I wrote some shader programs to render lighting effects. I also did some extra credit work to render more realistic cloth.</p>
+
+    <h2 align="middle">Part 1: Masses and springs</h2>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody><tr>
+            <td>
+                <img src="images/1_1.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/1_2.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <img src="images/1_3.jpg" align="middle" width="400px">
+                <figcaption align="middle">No SHEARING</figcaption>
+            </td>
+            <td>
+                <img src="images/1_4.jpg" align="middle" width="400px">
+                <figcaption align="middle">Only SHEARING</figcaption>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/1_5.jpg" align="middle" width="400px">
+                <figcaption align="middle">All constraints</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>As expected, shearing constraints are the diagonal edges.</p>
+    <hr>
+
+
+    <h2 align="middle">Part 2: Simulation via numerical integration</h2>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/2_1.jpg" align="middle" width="400px">
+                <figcaption align="middle">ks=100</figcaption>
+            </td>
+            <td>
+                <img src="images/2_2.jpg" align="middle" width="400px">
+                <figcaption align="middle">ks=300,000</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>With a low ks, the springs doesn't have much forces on its ends, so the cloth falls by gravity and stay still quickly. For a high ks, the sping has a lot of forces to act on both ends, which makes the cloth more "rigid" because the forces of the spring counters the effect of gravity, so the cloth doesn't fall but instead stay almost flat and keeps bouncing.</p>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/2_3.jpg" align="middle" width="400px">
+                <figcaption align="middle">density=1g/cm^2</figcaption>
+            </td>
+            <td>
+                <img src="images/2_4.jpg" align="middle" width="400px">
+                <figcaption align="middle">density=15,000g/cm^2</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>With a low density, the cloth is lighter so there're not many wrinkles on the surface because there's not much force caused by masses dragging the pinned points. For a higher density, the cloth becomes heavier, so there're wrinkles on the surface. This is because the midpoint of each outer cloth edge is heavy so that it drags the pinned points, creating a curvier rim.</p>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/2_5.jpg" align="middle" width="400px">
+                <figcaption align="middle">damping=0%</figcaption>
+            </td>
+            <td>
+                <img src="images/2_6.jpg" align="middle" width="400px">
+                <figcaption align="middle">damping=1%</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>With no damping, the movement of the cloth is very drastic. It bounces a long time to go from start to rest because no damping means no energy loss by friction and heat. With a high damping, the movement of the cloth is much smoother. It simply falls and then arrive at a stable state without bouncing.</p>
+    <hr>
+    <div align="middle">
+                <img src="images/2_7.jpg" align="middle" width="400px">
+                <figcaption align="middle">shaded cloth with default param</figcaption>
+    </div>
+    <hr>
+
+    <h2 align="middle">Part 3: Handling collisions with other objects</h2>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/3_1.jpg" align="middle" width="300px">
+                <figcaption align="middle">ks=500</figcaption>
+            </td>
+            <td>
+                <img src="images/3_2.jpg" align="middle" width="300px">
+                <figcaption align="middle">ks=5,000</figcaption>
+            </td>
+            <td>
+                <img src="images/3_3.jpg" align="middle" width="300px">
+                <figcaption align="middle">ks=50,000</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>We can see that the higher the ks is, the more tension there is in the cloth, which prevents the bottom part from hanging vertically. The tension from the springs drags the rim of the cloth to stay at an angled way.</p>
+    <hr>
+    <div align="middle">
+        <img src="images/3_4.jpg" align="middle" width="400px">
+        <figcaption align="middle">shaded cloth on plane</figcaption>
+    </div>
+    <hr>
+    <h2 align="middle">Part 4: Handling self-collisions</h2>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody><tr>
+            <td>
+                <img src="images/4_1.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_2.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <img src="images/4_3.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_4.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+        </tbody></table>
+        <p>Default parameters</p>
+    </div>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody><tr>
+            <td>
+                <img src="images/4_9.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_10.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <img src="images/4_11.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_12.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+        </tbody></table>
+        <p>density=1500g/cm^2</p>
+    </div>
+    <p>With a much higher density, the cloth has more wrinkles when it comes to a rest state. This is probably because the cloth is heavier. The lighter cloth, for example, silk, will fall to the plane and become almost flat without wrinkles, while a heavier cloth, for example, a T-shirt will fall to the plane and have a ton of winkles.</p>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody><tr>
+            <td>
+                <img src="images/4_5.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_6.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <img src="images/4_7.jpg" align="middle" width="400px">
+            </td>
+            <td>
+                <img src="images/4_8.jpg" align="middle" width="400px">
+            </td>
+        </tr>
+        </tbody></table>
+        <p>ks=300,000</p>
+    </div>
+    <p>With a much higher ks, there is more tension in the springs, so the cloth has fewer but much bigger wrinkles comparing to the default parameter cloth. It also moves along the plane quite a lot because of the tension.</p>
+    <hr>
+
+    <h2 align="middle">Part 5: Shaders</h2>
+    <hr>
+    <p>Shader programs are programs that runs in the rasterization pipeline which simply go from inputs to outputs. In this project, we have 2 types of shaders. Vertex shaders take model-space verteices inputs and transform vertices (positions, normals, etc.) to world space. Fragment shaders will then apply colors to create lighting & material effects given vertices position, light information, etc.</p>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/5_1.jpg" align="middle" width="400px">
+                <figcaption align="middle">Ambient component</figcaption>
+            </td>
+            <td>
+                <img src="images/5_2.jpg" align="middle" width="400px">
+                <figcaption align="middle">Diffuse component</figcaption>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/5_3.jpg" align="middle" width="400px">
+                <figcaption align="middle">Specular component</figcaption>
+            </td>
+            <td>
+                <img src="images/5_4.jpg" align="middle" width="400px">
+                <figcaption align="middle">Blinn-Phong model</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>Blinn-Phong shading model says the shading is made up of 3 components: ambient, diffuse, and specular. Ambient is a constant lighting value that represents the general lights coming from the environment. Diffuse represents the lights coming from light sources diffused by the material. Specular represents the lights coming fromm light sources reflected by the material.</p>
+    <hr>
+    <div align="middle">
+        <img src="images/5_5.jpg" align="middle" width="400px">
+        <figcaption align="middle">Using texture 4</figcaption>
+    </div>
+    <hr>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/5_6.jpg" align="middle" width="400px">
+                <figcaption align="middle">Bump</figcaption>
+            </td>
+            <td>
+                <img src="images/5_7.jpg" align="middle" width="400px">
+                <figcaption align="middle">Displacement</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>Bump mapping only shows the correct lighting of the texture (the height map) but the cloth itself is still a thin sheet of cloth. Displacement mapping not only renders the correct lighting of the texture, but also modifies the vertices positions according to the height map.</p>
+    <div align="middle">
+        <br><table style="width=100%">
+        <tbody>
+        <tr>
+            <td>
+                <img src="images/5_8.jpg" align="middle" width="400px">
+                <figcaption align="middle">Bump, 16</figcaption>
+            </td>
+            <td>
+                <img src="images/5_9.jpg" align="middle" width="400px">
+                <figcaption align="middle">Bump, 128</figcaption>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/5_10.jpg" align="middle" width="400px">
+                <figcaption align="middle">Displacement, 16</figcaption>
+            </td>
+            <td>
+                <img src="images/5_11.jpg" align="middle" width="400px">
+                <figcaption align="middle">Displacement, 128</figcaption>
+            </td>
+        </tr>
+        </tbody></table>
+    </div>
+    <p>Not much difference for the bumping mapping. The only noticeable difference is that the lighting on the finer 128 sphere looks clearer (on the specular shading part). The difference between the two displacement mapping spheres are much more obvious. With a finer sphere of 128, we could see more tiny bumps while the 16 sphere looks like a rock.</p>
+    <hr>
+    <div align="middle">
+        <img src="images/5_12.jpg" align="middle" width="400px">
+        <figcaption align="middle">Mirror</figcaption>
+    </div>
+    <hr>
+    <h2 align="middle">Extra credit</h2>
+    <hr>
+    <p>I combined different shaders together and tuned parameters to make the cloth more realistic.</p>
+    <div align="middle">
+                <img src="images/5_13.jpg" align="middle" width="600px">
+                <figcaption align="middle">(Before) Simple texture mapping</figcaption>
+    </div>
+    <p>Building upon the basic texture mapping using texture 4, I added the Blinn-phong shading model and used texture 3 to do bump mapping. The model is designed as the following:</p>
+    <pre align="middle">L = La + Ld + Ls + Lt, Lt = kt * texture(tex, uv)</pre>
+    <p>The first three terms are from the Blinn-Phong shading model while the last term is the texture. When tuning the parameters, I used a small kt because the texture is too bright and saturated. I also decreased ks because a cloth material mainly diffuse instead of reflect. The reason why I included texture 3 as bump mapping is because it simulates wrinkles on the cloth.</p>
+    <div align="middle">
+        <img src="images/5_14.jpg" align="middle" width="600px">
+        <figcaption align="middle">Custom mapping (smooth version)</figcaption>
+    </div>
+    <hr>
+    <p>I also tried implemented another version by adding displacement mapping for the vertices using texture 2. I chose texture 2 because it creates a rough feeling for the cloth.</p>
+    <div align="middle">
+        <img src="images/5_15.jpg" align="middle" width="600px">
+        <figcaption align="middle">Custom mapping (rough version)</figcaption>
+    </div>
+
+</body>
 </html>
